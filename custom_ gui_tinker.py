@@ -1,5 +1,6 @@
 import customtkinter 
 import mysql.connector
+from tkinter import messagebox
 
 
 db = mysql.connector.connect(
@@ -9,15 +10,9 @@ db = mysql.connector.connect(
   database="user_bank"
 )
 def bank_details():
-    def deposit():
-        query = "SELECT Name, Age, Gender, Balance FROM user_account WHERE id = 1"
-        cursor.execute(query)
-        result = cursor.fetchone()
-        customtkinter.CTkLabel(frame, text=result)
-    def withdrawal():
-        pass
-    def show_user_details():
-        pass    
+    global deposit
+    global withdrawal_now
+    global show_details_window
     user_homepage = customtkinter.CTkToplevel()
     user_homepage.title("Bank Account homepage")
     user_homepage.geometry("1200x700")
@@ -29,19 +24,51 @@ def bank_details():
     deposit_money.pack(pady = 12, padx= 10)
     deposit_entry = customtkinter.CTkEntry(frame)
     deposit_entry.pack()
-    deposit_button = customtkinter.CTkButton(frame, text="Deposit", command=deposit())
+    def deposit():
+        password_entry_g = password_entry.get()
+        db_g = deposit_entry.get()
+        cursor.execute("UPDATE user_account SET Balance = Balance + %s WHERE password = %s", (db_g, password_entry_g))
+        db.commit()
+        customtkinter.CTkLabel(frame, text="deposit sucessfull").pack()
+
+    deposit_button = customtkinter.CTkButton(frame, text="Deposit", command=deposit)
     deposit_button.pack(pady = 12, padx= 10)
     withdrawal_money = customtkinter.CTkLabel(frame, text="Enter ammount you want to withdraw Bellow")
     withdrawal_money.pack()
     withdrawal_entry = customtkinter.CTkEntry(frame)
     withdrawal_entry.pack(pady = 12, padx= 10)
-    withdrawal_button = customtkinter.CTkButton(frame, text="Withdrawal")
+    def withdrawal_now():
+        withdrawal_entry_g = withdrawal_entry.get()
+        password_entry_g = password_entry.get()
+        cursor.execute("SELECT Balance FROM user_account WHERE password = %s", (password_entry_g,))
+        result = cursor.fetchone()
+        balance = result[0]
+        if balance < int(withdrawal_entry_g):
+            messagebox.showinfo("You do not have enough in your balance")
+        else:
+            update_statement = "UPDATE user_account SET Balance = Balance - %s WHERE password = %s"
+            cursor.execute(update_statement, (withdrawal_entry_g, password_entry_g))
+            db.commit()
+            deposit_suc = customtkinter.CTkLabel(frame, text="Withdrawal sucessfull").pack()
+        
+    withdrawal_button = customtkinter.CTkButton(frame, text="Withdrawal", command= withdrawal_now)
     withdrawal_button.pack(pady = 12, padx= 10)
+    
                 
+    def show_details_window():
+        cursor.execute("SELECT balance FROM user_account ")
+        result = cursor.fetchone()
+        balance = result[0]
+        customtkinter.CTkLabel(user_homepage, text="Account Balance:" + str(balance)).pack()
+        return balance
+                 
 
-    customtkinter.CTkLabel(frame, text="Or if you want to see your bank details ").pack()
-    show_details = customtkinter.CTkButton(frame, text="Show Account Details", command= show_user_details)
+    customtkinter.CTkLabel(frame, text="Or if you want to check your account balance ").pack()
+    show_details = customtkinter.CTkButton(frame, text="Check Balance", command=show_details_window)
     show_details.pack()
+    customtkinter.CTkButton(frame, text="Exit", command=root.destroy).pack(pady = 12, padx= 10)
+
+
 
                                
 
@@ -105,7 +132,7 @@ def login():
     user = cursor.fetchone()
     if user is not None:
         message_label.configure(text= "Login Successfull")
-        root.destroy()
+        root.withdraw()
         bank_details()
 
     else:
